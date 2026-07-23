@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOMAYALE — Business Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#14261f; --paper:#f7f4ec; --card:#ffffff; --line:#e2ddcf;
+    --brand:#0f5132; --brand2:#1a7a4c; --gold:#b8862f; --danger:#b3261e;
+    --muted:#6b6b5e; --soft:#eef4ef; --shadow:0 2px 10px rgba(20,38,31,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--paper);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .hidden{display:none!important}
+  button{font-family:inherit;cursor:pointer;border:none;font-size:16px}
+  input,select{font-family:inherit;font-size:16px}
+
+  #loginView{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;
+    background:linear-gradient(160deg,#0f5132,#14261f)}
+  .loginCard{background:var(--card);border-radius:20px;padding:32px 26px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .logo{width:64px;height:64px;border-radius:16px;background:var(--brand);display:flex;align-items:center;justify-content:center;
+    margin:0 auto 14px;color:#fff;font-weight:800;font-size:26px;letter-spacing:.5px}
+  .loginCard h1{text-align:center;font-size:22px;margin-bottom:2px}
+  .loginCard .sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:14px 0 5px}
+  .field{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fbfaf6}
+  .field:focus{outline:none;border-color:var(--brand2)}
+  .btn{width:100%;padding:14px;border-radius:12px;background:var(--brand);color:#fff;font-weight:700;margin-top:20px;transition:.15s}
+  .btn:hover{background:var(--brand2)}
+  .btn.ghost{background:transparent;color:var(--brand);border:1.5px solid var(--line)}
+  .btn.small{width:auto;padding:8px 14px;font-size:13px;margin-top:0}
+  .err{color:var(--danger);font-size:13px;text-align:center;margin-top:12px;min-height:18px}
+  .pinHint{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--muted);margin-top:18px}
+  .pinHint b{color:var(--ink)}
+
+  #appView{min-height:100vh;display:flex;flex-direction:column;max-width:660px;margin:0 auto;background:var(--paper)}
+  .topbar{background:var(--brand);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+  .topbar .who{font-size:13px;opacity:.9} .topbar .who b{display:block;font-size:15px;opacity:1}
+  .topbar button{background:rgba(255,255,255,.15);color:#fff;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:600}
+  .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:4;overflow-x:auto}
+  .tabs button{flex:0 0 auto;padding:13px 14px;background:none;color:var(--muted);font-weight:600;font-size:12.5px;border-bottom:3px solid transparent;white-space:nowrap}
+  .tabs button.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .page{padding:18px;flex:1}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .card h2{font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .row{display:flex;gap:10px} .row>*{flex:1}
+  .statGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .stat{background:var(--soft);border-radius:14px;padding:14px}
+  .stat .lbl{font-size:12px;color:var(--muted);font-weight:600}
+  .stat .val{font-size:22px;font-weight:800;color:var(--brand);margin-top:3px}
+  .listItem{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--line);font-size:14px}
+  .listItem:first-of-type{border-top:none}
+  .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-block}
+  .pill.owner{background:#e7f0ea;color:var(--brand)} .pill.staff{background:#fbf1dc;color:var(--gold)}
+  .pill.low{background:#fbe3e1;color:var(--danger)} .pill.ok{background:#e7f0ea;color:var(--brand)}
+  .pill.truck{background:#e6eefb;color:#26518c}
+  .muted{color:var(--muted);font-size:13px}
+  .empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:14px}
+  .amount{font-weight:800;color:var(--brand)}
+  .logRow{padding:10px 0;border-top:1px solid var(--line);font-size:13px}
+  .logRow:first-child{border-top:none}
+  .logRow .t{color:var(--muted);font-size:12px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3);z-index:20;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;bottom:30px}
+  .addBtn{width:100%;padding:13px;border-radius:12px;background:var(--brand);color:#fff;font-weight:700;margin-top:6px}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+  .warn{background:#fff8ec;border:1px solid #f0dcae;border-radius:12px;padding:12px 14px;font-size:13px;color:#7a5b16;margin-bottom:14px}
+  .crew{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.7}
+  .crew b{color:var(--ink)}
+  .agentBlock{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:#fcfbf7}
+  .agentBlock .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .agentBlock .head .nm{font-weight:700}
+  .segbtn{display:flex;gap:8px;margin-bottom:14px}
+  .segbtn button{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--muted);font-weight:600;font-size:13px}
+  .segbtn button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .subline{font-size:12px;color:var(--muted)}
+  .promoBanner{background:#fff4e0;border:1px solid #f0cf8f;border-radius:12px;padding:11px 13px;margin:10px 0 4px;font-size:13px;color:#7a5b16}
+  .promoBanner b{color:#5c440f}
+  .promoTag{background:#fff4e0;color:#8a6516;border:1px solid #f0cf8f}
+</style>
+</head>
+<body>
+
+<div id="loginView">
+  <div class="loginCard">
+    <div class="logo">JM</div>
+    <h1>JOMAYALE</h1>
+    <div class="sub">Beverage Distribution · Sibulan</div>
+    <label for="userSelect">Who is logging in?</label>
+    <select id="userSelect" class="field"></select>
+    <label for="pinInput">Enter your PIN</label>
+    <input id="pinInput" class="field" type="password" inputmode="numeric" placeholder="••••" maxlength="6" autocomplete="off">
+    <button class="btn" onclick="doLogin()">Log in</button>
+    <div class="err" id="loginErr"></div>
+    <div class="pinHint">
+      <b>Accounts:</b><br>
+      Owner - Kap Janz &nbsp;· PIN <b>1111</b><br>
+      Cashier - Jocelyn &nbsp;· PIN <b>2222</b>
+    </div>
+  </div>
+</div>
+
+<div id="appView" class="hidden">
+  <div class="topbar">
+    <div class="who">Logged in as<b id="currentName">—</b></div>
+    <button onclick="doLogout()">Log out</button>
+  </div>
+  <div class="tabs">
+    <button data-tab="home" class="active" onclick="switchTab('home')">Home</button>
+    <button data-tab="sales" onclick="switchTab('sales')">Sales</button>
+    <button data-tab="mysales" id="mySalesTab" onclick="switchTab('mysales')" style="display:none">My Sales</button>
+    <button data-tab="agents" onclick="switchTab('agents')">Agents</button>
+    <button data-tab="collect" id="collectTab" onclick="switchTab('collect')">Collectibles</button>
+    <button data-tab="loading" id="loadingTab" onclick="switchTab('loading')">Loading</button>
+    <button data-tab="stock" onclick="switchTab('stock')">Stock</button>
+    <button data-tab="promos" onclick="switchTab('promos')">Promos</button>
+    <button data-tab="log" onclick="switchTab('log')">Activity</button>
+    <button data-tab="reports" onclick="switchTab('reports')">Reports</button>
+    <button data-tab="trucks" id="trucksTab" onclick="switchTab('trucks')">Trucks</button>
+    <button data-tab="people" id="peopleTab" onclick="switchTab('people')">People</button>
+  </div>
+
+  <div class="page" id="page-home">
+    <div class="card">
+      <h2>Today at a glance</h2>
+      <div class="statGrid">
+        <div class="stat"><div class="lbl">Sales today (₱)</div><div class="val" id="statSales">0</div></div>
+        <div class="stat"><div class="lbl">Transactions</div><div class="val" id="statTxns">0</div></div>
+        <div class="stat"><div class="lbl">Walk-in sales (₱)</div><div class="val" id="statWalk">0</div></div>
+        <div class="stat"><div class="lbl">Products low</div><div class="val" id="statLow">0</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Accountability</h2>
+      <p class="muted">Every sale is stamped with the agent, the truck, and the time. Route sales roll up per agent; warehouse walk-ins are kept separate.</p>
+      <div class="divider"></div>
+      <div id="recentActivity"></div>
+    </div>
+    <div class="card" id="newDayCard">
+      <h2>Start a new day</h2>
+      <p class="muted" style="margin-bottom:10px">Clears today's sales and truck loads for a fresh start. Your product list, prices, trucks, people, and promos stay saved. Yesterday's records are archived in the activity log.</p>
+      <button class="addBtn" onclick="startNewDay()" style="background:var(--gold)">↻ Start new day (clear sales & loads)</button>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-sales">
+    <div class="card">
+      <h2>New order</h2>
+      <div class="segbtn">
+        <button id="segTruck" class="on" onclick="setSaleMode('truck')">Truck route sale</button>
+        <button id="segWalk" onclick="setSaleMode('walkin')">Walk-in (warehouse)</button>
+      </div>
+      <div id="truckFields">
+        <label>Truck</label>
+        <select id="saleTruck" class="field" onchange="showTruckCrew()"></select>
+        <div class="crew" id="crewInfo"></div>
+      </div>
+      <label>Store / Customer</label>
+      <select id="storePicker" class="field" onchange="onStorePick()"></select>
+      <input id="newStoreName" class="field hidden" style="margin-top:8px" placeholder="Type the new store / customer name">
+      <label>Money received by</label>
+      <select id="saleReceiver" class="field"></select>
+    </div>
+
+    <div class="card">
+      <h2>Add products to this order</h2>
+      <label>Search product</label>
+      <input id="prodSearch" class="field" placeholder="Type to filter… e.g. red horse, coke" oninput="filterProducts()">
+      <div class="row" style="margin-top:8px">
+        <div><label>Product</label><select id="saleProduct" class="field" onchange="showSalePromo()"></select></div>
+        <div><label>Cases</label><input id="saleQty" class="field" type="number" inputmode="numeric" min="1" placeholder="0" oninput="showSalePromo()"></div>
+      </div>
+      <div id="prodDetails"></div>
+      <div id="salePromoBanner"></div>
+      <button class="addBtn" onclick="addToCart()">Add to order</button>
+    </div>
+
+    <div class="card">
+      <h2>Current order <span id="cartStoreName" class="muted"></span></h2>
+      <div id="oldBalanceBanner"></div>
+      <div id="cartList"><div class="empty">No items added yet.</div></div>
+      <div id="cartTotalRow" class="hidden" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid var(--line)">
+        <b>Order total</b><b class="amount" id="cartTotal">₱0</b>
+      </div>
+
+      <div id="payArea" class="hidden" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+        <label style="margin-bottom:8px">How did the store pay?</label>
+        <div class="segbtn">
+          <button id="payFullBtn" class="on" onclick="setPayMode('full')">Paid in full</button>
+          <button id="payPartialBtn" onclick="setPayMode('partial')">Partial</button>
+        </div>
+        <div id="partialFields" class="hidden" style="margin-top:8px">
+          <label>Amount paid now (₱)</label>
+          <input id="paidNow" class="field" type="number" inputmode="numeric" min="0" placeholder="e.g. 500" oninput="showPaySummary()">
+          <div id="paySummary" style="margin-top:8px"></div>
+        </div>
+        <div id="collectArea" class="hidden" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+          <label>Also collect for OLD balance (₱) <span class="muted">optional</span></label>
+          <input id="collectOld" class="field" type="number" inputmode="numeric" min="0" placeholder="0" oninput="showPaySummary()">
+        </div>
+      </div>
+
+      <button class="addBtn" id="completeBtn" onclick="completeOrder()" style="background:var(--gold);display:none">✓ Complete order (OK)</button>
+      <button class="btn ghost small" id="cancelCartBtn" onclick="cancelCart()" style="display:none;margin-top:8px;width:100%">Cancel this order</button>
+    </div>
+
+    <div class="card">
+      <h2>Today's completed sales</h2>
+      <p class="muted" style="margin-bottom:6px">Completed orders are locked for accountability.</p>
+      <div id="salesList"><div class="empty">No sales recorded yet today.</div></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-mysales">
+    <div class="card">
+      <h2>My sales today <span id="mySalesName" class="muted"></span></h2>
+      <p class="muted" style="margin-bottom:6px">This shows only your own route sales. The business totals are private to the owner.</p>
+      <div class="statGrid" style="margin:10px 0">
+        <div class="stat"><div class="lbl">My sales today (₱)</div><div class="val" id="myStatSales">0</div></div>
+        <div class="stat"><div class="lbl">My orders</div><div class="val" id="myStatOrders">0</div></div>
+      </div>
+      <div class="divider"></div>
+      <div id="mySalesList"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-agents">
+    <div class="card">
+      <h2>Agent sales report — today</h2>
+      <p class="muted" style="margin-bottom:6px">Every store and customer handled by each agent. All sales are covered under the agent responsible.</p>
+      <div class="divider"></div>
+      <div id="agentReport"></div>
+    </div>
+    <div class="card">
+      <h2>Walk-in customers — today</h2>
+      <p class="muted" style="margin-bottom:6px">Warehouse sales, kept separate from truck routes.</p>
+      <div class="divider"></div>
+      <div id="walkinReport"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-collect">
+    <div class="card">
+      <h2>Collectibles <span id="collectScopeName" class="muted"></span></h2>
+      <p class="muted" style="margin-bottom:6px">Unpaid balances (utang) per store. Each balance follows the agent whose route the store is on. To collect a payment, start a new order for that store on the Sales tab — the old balance shows there.</p>
+      <div class="divider"></div>
+      <div id="collectList"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-loading">
+    <div class="card">
+      <h2>Truck loading & return</h2>
+      <p class="muted" style="margin-bottom:10px">Before leaving: record cases loaded (pulls from warehouse). After the route: record cases returned (goes back to warehouse). The balance shows what was sold.</p>
+      <label>Truck</label>
+      <select id="loadTruck" class="field" onchange="renderLoading()"></select>
+      <div class="crew" id="loadCrew"></div>
+    </div>
+
+    <div class="card">
+      <div class="segbtn">
+        <button id="loadModeLoad" class="on" onclick="setLoadMode('load')">Load (leaving)</button>
+        <button id="loadModeReturn" onclick="setLoadMode('return')">Return (back)</button>
+      </div>
+      <div id="loadFormArea">
+        <label>Product</label>
+        <select id="loadProduct" class="field"></select>
+        <label id="loadQtyLabel">Cases to load</label>
+        <input id="loadQty" class="field" type="number" inputmode="numeric" min="1" placeholder="0">
+        <button class="addBtn" id="loadActionBtn" onclick="recordLoad()">Record loaded</button>
+      </div>
+    </div>
+
+    <div class="card" id="verifyCard">
+      <h2>Load verification</h2>
+      <p class="muted" style="margin-bottom:10px">The cashier checks the physical cases against what was entered, then confirms. The truck should only leave after the load is confirmed.</p>
+      <div id="verifyArea"></div>
+    </div>
+
+    <div class="card">
+      <h2>Today's reconciliation <span id="reconTruckName" class="muted"></span></h2>
+      <div id="reconTable"></div>
+      <div id="reconTotals" class="hidden" style="margin-top:12px;padding-top:12px;border-top:2px solid var(--line)"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-stock">
+    <div class="card">
+      <h2>Stock on hand</h2>
+      <p class="muted" style="margin-bottom:12px">Tap a product to add delivered stock. Selling reduces it automatically.</p>
+      <div id="stockList"></div>
+      <button class="btn ghost small" onclick="add20Blanks()" style="width:100%;margin-top:10px">＋ Add 20 blank product slots to fill in</button>
+    </div>
+    <div class="card" id="addProductCard">
+      <h2>Add a new product</h2>
+      <p class="muted" style="margin-bottom:10px">Add one product at a time, or use the "20 blank slots" button above to fill many quickly.</p>
+      <label>Product name</label>
+      <input id="npName" class="field" placeholder="e.g. Red Horse Mucho 1L">
+      <div class="row" style="margin-top:4px">
+        <div><label>Price per case (₱)</label><input id="npPrice" class="field" type="number" inputmode="numeric" min="0" placeholder="e.g. 960"></div>
+        <div><label>Starting stock (cases)</label><input id="npStock" class="field" type="number" inputmode="numeric" min="0" placeholder="e.g. 50"></div>
+      </div>
+      <button class="addBtn" onclick="addProduct()">Add product</button>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-promos">
+    <div class="card">
+      <h2>Active promos</h2>
+      <p class="muted" style="margin-bottom:6px">Special-occasion discounts and freebies. Everyone can see these; only the owner sets them.</p>
+      <div class="divider"></div>
+      <div id="promoList"></div>
+    </div>
+    <div class="card" id="addPromoCard">
+      <div class="warn" id="promoOwnerWarn">Only the owner (Kap Janz) can create or change promos.</div>
+      <h2>Set a promo</h2>
+      <label>Product</label>
+      <select id="promoProduct" class="field"></select>
+      <div class="segbtn" style="margin-top:10px">
+        <button id="promoTypeDisc" class="on" onclick="setPromoType('discount')">₱ Discount</button>
+        <button id="promoTypeFree" onclick="setPromoType('freebie')">Freebie</button>
+      </div>
+      <div id="promoDiscFields">
+        <label>Discount per case (₱ off)</label>
+        <input id="promoAmount" class="field" type="number" inputmode="numeric" min="0" placeholder="e.g. 50">
+      </div>
+      <div id="promoFreeFields" class="hidden">
+        <div class="row">
+          <div><label>Buy how many cases</label><input id="promoBuy" class="field" type="number" inputmode="numeric" min="1" placeholder="e.g. 10"></div>
+          <div><label>Get free cases</label><input id="promoGet" class="field" type="number" inputmode="numeric" min="1" placeholder="e.g. 1"></div>
+        </div>
+      </div>
+      <label>Occasion / note (optional)</label>
+      <input id="promoNote" class="field" placeholder="e.g. Fiesta week, ends Sunday">
+      <button class="addBtn" onclick="addPromo()">Save promo</button>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-log">
+    <div class="card">
+      <h2>Activity log</h2>
+      <p class="muted" style="margin-bottom:6px">Newest first — who did what, and when.</p>
+      <div class="divider"></div>
+      <div id="fullLog"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-reports">
+    <div class="card">
+      <h2>Weekly Sales Report</h2>
+      <p class="muted" style="margin-bottom:12px">View and print weekly sales by truck. Same data as the Excel form, organized by week.</p>
+      <div class="row" style="margin-bottom:12px;gap:8px">
+        <div><label>Select week</label><input type="week" id="reportWeek" class="field" onchange="loadWeeklyReport()"></div>
+        <button class="addBtn" onclick="window.print()" style="margin-top:20px;background:#666">🖨 Print this week</button>
+      </div>
+      <div id="weeklyReportContent"></div>
+    </div>
+    <div class="card">
+      <h2>Monthly Summary</h2>
+      <p class="muted" style="margin-bottom:12px">Totals across all trucks for the month.</p>
+      <div class="row" style="margin-bottom:12px;gap:8px">
+        <div><label>Month</label><input type="month" id="reportMonth" class="field" onchange="loadMonthlySummary()"></div>
+        <button class="addBtn" onclick="window.print()" style="margin-top:20px;background:#666">🖨 Print this month</button>
+      </div>
+      <div id="monthlySummaryContent"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-trucks">
+    <div class="warn">Only the owner (Kap Janz) can add or edit trucks and crews.</div>
+    <div class="card">
+      <h2>Add / edit a truck</h2>
+      <label>Truck name / number</label>
+      <input id="tName" class="field" placeholder="e.g. Truck 1">
+      <div class="row" style="margin-top:4px">
+        <div><label>Driver</label><input id="tDriver" class="field" placeholder="Driver name"></div>
+        <div><label>Agent</label><input id="tAgent" class="field" placeholder="Agent name"></div>
+      </div>
+      <div class="row" style="margin-top:4px">
+        <div><label>Assistant</label><input id="tAssistant" class="field" placeholder="Assistant name"></div>
+        <div><label>Route / area</label><input id="tRoute" class="field" placeholder="Type the route / area"></div>
+      </div>
+      <button class="addBtn" onclick="saveTruck()">Save truck</button>
+      <div class="subline" id="editHint" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>Trucks & crews</h2>
+      <div id="trucksList"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="page-people">
+    <div class="warn">Only the owner (Kap Janz) can add or remove who is allowed to log in. <b>Tip:</b> Change the sample PINs (1111 / 2222 / 3333) to your own secret PINs using "Change PIN" below.</div>
+    <div class="card">
+      <h2>Add a person</h2>
+      <label>Name</label>
+      <input id="newName" class="field" placeholder="e.g. Rey (Agent)">
+      <div class="row" style="margin-top:4px">
+        <div><label>Role</label>
+          <select id="newRole" class="field" onchange="onRoleChange()"><option value="staff">Staff (cashier)</option><option value="agent">Agent (route)</option><option value="owner">Owner</option></select>
+        </div>
+        <div><label>4-digit PIN</label><input id="newPin" class="field" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 3333"></div>
+      </div>
+      <div id="agentLinkWrap" class="hidden" style="margin-top:4px">
+        <label>Which truck's agent is this? (their sales tie to this)</label>
+        <select id="newAgentTruck" class="field"></select>
+      </div>
+      <button class="addBtn" onclick="addPerson()">Add person</button>
+    </div>
+    <div class="card">
+      <h2>Current people</h2>
+      <div id="peopleList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ================== JOMAYALE CLOUD (Supabase) ==================
+const SUPABASE_URL = 'https://ppdppnpwgfsazejokvrw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_WSAM4V3zicPImYDZQ3GJaQ_6oo_Own9';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// In-memory data (loaded from cloud at startup, kept in sync)
+let people=[], products=[], trucks=[], sales=[], activity=[], promos=[], stores=[], loads=[], verifications=[];
+let current = null;
+let saleMode = 'truck';
+let editingTruck = -1;
+let promoType = 'discount';
+let cart = [];
+let cartStore = '';
+let loadMode = 'load';
+let payMode = 'full';
+let cloudReady = false;
+let syncing = false;
+
+// Map DB rows (snake_case) -> app objects (camelCase) and back
+function rowsToProducts(r){ return r.map(x=>({id:x.id, code:x.code, price:Number(x.price), stock:Number(x.stock)})); }
+function rowsToPeople(r){ return r.map(x=>({id:x.id, name:x.name, role:x.role, pin:x.pin, agentName:x.agent_name||undefined})); }
+function rowsToTrucks(r){ return r.map(x=>({id:x.id, name:x.name, driver:x.driver||'', agent:x.agent||'', assistant:x.assistant||'', route:x.route||''})); }
+function rowsToLoads(r){ return r.map(x=>({id:x.id, truck:x.truck, day:x.day, product:x.product, loaded:Number(x.loaded), returned:Number(x.returned)})); }
+function rowsToVerif(r){ return r.map(x=>({id:x.id, truck:x.truck, day:x.day, by:x.verified_by, time:x.verified_at})); }
+function rowsToStores(r){ return r.map(x=>x.name); }
+function rowsToActivity(r){ return r.map(x=>({id:x.id, who:x.who, action:x.action, time:x.time_str, day:x.day})); }
+function rowsToPromos(r){ return r.map(x=>({id:x.id, product:x.product, type:x.kind, amount:Number(x.amount), buy:Number(x.buy), get:Number(x.get), note:x.note||''})); }
+function rowsToSales(r){ return r.map(x=>({id:x.id, orderId:x.order_id, type:x.type, store:x.store, product:x.product,
+  qty:Number(x.qty), freeCases:Number(x.free_cases), amount:Number(x.amount), unitPrice:Number(x.unit_price),
+  truck:x.truck, agent:x.agent, receiver:x.receiver, promo:x.promo, by:x.by_name, time:x.time_str, day:x.day,
+  orderTotal:Number(x.order_total), paid:Number(x.paid), balance:Number(x.balance), collectedOld:Number(x.collected_old),
+  archived:!!x.archived})); }
+
+// Load everything from the cloud into memory
+async function loadAll(){
+  const [p,pr,tr,ld,vf,st,ac,pm,sl] = await Promise.all([
+    sb.from('people').select('*').order('id'),
+    sb.from('products').select('*').order('id'),
+    sb.from('trucks').select('*').order('id'),
+    sb.from('loads').select('*').order('id'),
+    sb.from('verifications').select('*').order('id'),
+    sb.from('stores').select('*').order('id'),
+    sb.from('activity').select('*').order('id',{ascending:false}).limit(300),
+    sb.from('promos').select('*').order('id'),
+    sb.from('sales').select('*').order('id',{ascending:false})
+  ]);
+  // Diagnostics — visible in browser console (F12)
+  console.log('JOMAYALE load:', {
+    people: p.error? 'ERR:'+p.error.message : (p.data?.length+' rows'),
+    products: pr.error? 'ERR:'+pr.error.message : (pr.data?.length+' rows'),
+    trucks: tr.error? 'ERR:'+tr.error.message : (tr.data?.length+' rows'),
+    sales: sl.error? 'ERR:'+sl.error.message : (sl.data?.length+' rows')
+  });
+  if(p.data) people=rowsToPeople(p.data);
+  if(pr.data) products=rowsToProducts(pr.data);
+  if(tr.data) trucks=rowsToTrucks(tr.data);
+  if(ld.data) loads=rowsToLoads(ld.data);
+  if(vf.data) verifications=rowsToVerif(vf.data);
+  if(st.data) stores=rowsToStores(st.data);
+  if(ac.data) activity=rowsToActivity(ac.data);
+  if(pm.data) promos=rowsToPromos(pm.data);
+  if(sl.data) sales=rowsToSales(sl.data);
+  cloudReady=true;
+}
+
+// Snapshot-sync a table: replace all its rows with current in-memory data.
+// GUARD: never wipe a table to empty unless an explicit clear flag is set,
+// so a momentary empty in-memory array can't erase good cloud data.
+let allowEmptySync = {}; // e.g. {products:true} when an intentional clear happens
+async function syncTable(name){
+  try{
+    const arrByName={people,products,trucks,loads,verifications,stores,activity,promos,sales};
+    const arr=arrByName[name];
+    if(arr && arr.length===0 && !allowEmptySync[name]){
+      // Refuse to blow away cloud data with an empty array unless intended
+      return;
+    }
+    if(name==='people'){
+      await sb.from('people').delete().neq('id',-1);
+      if(people.length) await sb.from('people').insert(people.map(p=>({name:p.name,role:p.role,pin:p.pin,agent_name:p.agentName||null})));
+    } else if(name==='products'){
+      await sb.from('products').delete().neq('id',-1);
+      if(products.length) await sb.from('products').insert(products.map(p=>({code:p.code,price:p.price,stock:p.stock})));
+    } else if(name==='trucks'){
+      await sb.from('trucks').delete().neq('id',-1);
+      if(trucks.length) await sb.from('trucks').insert(trucks.map(t=>({name:t.name,driver:t.driver,agent:t.agent,assistant:t.assistant,route:t.route})));
+    } else if(name==='loads'){
+      await sb.from('loads').delete().neq('id',-1);
+      if(loads.length) await sb.from('loads').insert(loads.map(l=>({truck:l.truck,day:l.day,product:l.product,loaded:l.loaded,returned:l.returned})));
+    } else if(name==='verifications'){
+      await sb.from('verifications').delete().neq('id',-1);
+      if(verifications.length) await sb.from('verifications').insert(verifications.map(v=>({truck:v.truck,day:v.day,verified_by:v.by,verified_at:v.time})));
+    } else if(name==='stores'){
+      await sb.from('stores').delete().neq('id',-1);
+      if(stores.length) await sb.from('stores').insert(stores.map(s=>({name:s})));
+    } else if(name==='activity'){
+      await sb.from('activity').delete().neq('id',-1);
+      if(activity.length) await sb.from('activity').insert(activity.slice(0,300).map(a=>({who:a.who,action:a.action,time_str:a.time,day:a.day})));
+    } else if(name==='promos'){
+      await sb.from('promos').delete().neq('id',-1);
+      if(promos.length) await sb.from('promos').insert(promos.map(p=>({product:p.product,kind:p.type,amount:p.amount||0,buy:p.buy||0,get:p.get||0,note:p.note||''})));
+    } else if(name==='sales'){
+      await sb.from('sales').delete().neq('id',-1);
+      if(sales.length) await sb.from('sales').insert(sales.map(s=>({order_id:s.orderId,type:s.type,store:s.store,product:s.product,
+        qty:s.qty,free_cases:s.freeCases||0,amount:s.amount,unit_price:s.unitPrice,truck:s.truck,agent:s.agent,receiver:s.receiver,
+        promo:s.promo,by_name:s.by,time_str:s.time,day:s.day,order_total:s.orderTotal||0,paid:s.paid||0,balance:s.balance||0,
+        collected_old:s.collectedOld||0,archived:!!s.archived})));
+    }
+  }catch(e){ console.error('sync '+name+' failed', e); }
+}
+
+// persist(name or list): push only the changed table(s) to the cloud.
+// Called with no args = sync all (used rarely). Normally pass the table name(s).
+async function persist(which){
+  if(!cloudReady) return;
+  let tables;
+  if(!which) tables=['people','products','trucks','loads','verifications','stores','activity','promos','sales'];
+  else if(Array.isArray(which)) tables=which;
+  else tables=[which];
+  syncing=true;
+  await Promise.all(tables.map(syncTable));
+  // brief window so our own realtime echo is ignored
+  setTimeout(()=>{ syncing=false; }, 400);
+}
+
+// Realtime: when ANY table changes (from any phone), reload + redraw
+function startRealtime(){
+  sb.channel('jomayale-all')
+    .on('postgres_changes',{event:'*',schema:'public'}, async ()=>{
+      if(syncing) return;           // ignore echoes of our own writes
+      await loadAll();
+      if(current) renderAll();
+    })
+    .subscribe();
+}
+// ================================================================
+
+// ---- collectibles / balance helpers (per agent + store) ----
+function outstandingFor(agent, store){
+  // sum of balances added minus old-balance payments collected, for this agent+store
+  let bal=0;
+  sales.forEach(s=>{
+    if(s.type!=='truck') return;
+    if(s.agent!==agent || s.store!==store) return;
+    bal += (s.balance||0);          // unpaid part of that order
+    bal -= (s.collectedOld||0);     // payments applied to old balance
+  });
+  return Math.max(0, Math.round(bal));
+}
+// list of {store, owed} for an agent, only those still owing
+function agentCollectibles(agent){
+  const map={};
+  sales.forEach(s=>{
+    if(s.type!=='truck' || s.agent!==agent) return;
+    if(!(s.store in map)) map[s.store]=0;
+    map[s.store]+=(s.balance||0)-(s.collectedOld||0);
+  });
+  return Object.entries(map).map(([store,owed])=>({store,owed:Math.round(owed)}))
+    .filter(o=>o.owed>0).sort((a,b)=>b.owed-a.owed);
+}
+function isLoadVerified(truckName){
+  return verifications.some(v=>v.truck===truckName && v.day===todayKey());
+}
+function nowStr(){ const d=new Date(); return d.toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}); }
+function todayKey(){ return new Date().toDateString(); }
+function peso(n){ return '₱'+Number(n).toLocaleString('en-PH'); }
+function logAction(action){ activity.unshift({ who: current? current.name : 'Unknown', action, time: nowStr(), day: todayKey() }); activity=activity.slice(0,300); persist(); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1900); }
+
+function fillUserSelect(){ document.getElementById('userSelect').innerHTML = people.map(p=>`<option value="${p.name}">${p.name}</option>`).join(''); }
+async function doLogin(){
+  const name=document.getElementById('userSelect').value;
+  const pin=document.getElementById('pinInput').value.trim();
+  const err=document.getElementById('loginErr');
+  const person=people.find(p=>p.name===name);
+  if(!person){ err.textContent='Please choose a user.'; return; }
+  if(pin!==person.pin){ err.textContent='Wrong PIN. Try again.'; return; }
+  current=person; err.textContent=''; document.getElementById('pinInput').value='';
+  // Pull the latest data from the cloud so we never show a stale/empty screen
+  err.textContent='Loading…';
+  try{ await loadAll(); }catch(e){ console.error(e); }
+  err.textContent='';
+  logAction('Logged in'); showApp(); toast('Welcome, '+person.name.split(' ')[0]+'!');
+}
+function doLogout(){
+  logAction('Logged out'); current=null;
+  document.getElementById('appView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden'); fillUserSelect();
+}
+function showApp(){
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('appView').classList.remove('hidden');
+  document.getElementById('currentName').textContent=current.name;
+  const owner = current.role==='owner';
+  const agent = current.role==='agent';
+  // owner-only tabs
+  document.getElementById('trucksTab').style.display = owner ? '' : 'none';
+  document.getElementById('peopleTab').style.display = owner ? '' : 'none';
+  // agents get a restricted set: only Sales + My Sales. Hide business-wide views.
+  const hideForAgent = ['home','agents','stock','promos','log'];
+  document.querySelectorAll('.tabs button').forEach(b=>{
+    const t=b.dataset.tab;
+    if(agent && hideForAgent.includes(t)) b.style.display='none';
+    else if(!owner && (t==='trucks'||t==='people')) { /* handled above */ }
+    else if(!agent && t==='mysales') b.style.display='none';
+    else if(t!=='trucks' && t!=='people') b.style.display='';
+  });
+  // show My Sales tab only for agents
+  const my=document.getElementById('mySalesTab'); if(my) my.style.display = agent ? '' : 'none';
+  switchTab(agent ? 'sales' : 'home');
+}
+function switchTab(tab){
+  const owner = current && current.role==='owner';
+  const agent = current && current.role==='agent';
+  if((tab==='people'||tab==='trucks') && !owner){ toast('Only the owner can open that'); tab='home'; }
+  // agents may open sales, their own my-sales, loading, and their own collectibles
+  if(agent && !['sales','mysales','loading','collect'].includes(tab)){ toast('Agents can only see their own sales, loading & collectibles'); tab='sales'; }
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  const pg=document.getElementById('page-'+tab); if(pg) pg.classList.remove('hidden');
+  renderAll();
+}
+function renderAll(){ fillSelects(); renderHome(); renderSales(); renderCart(); renderMySales(); renderAgents(); renderCollect(); renderLoading(); renderStock(); renderPromos(); renderLog(); renderTrucks(); renderPeople(); }
+
+function renderMySales(){
+  const el=document.getElementById('mySalesList'); if(!el) return;
+  if(!current || current.role!=='agent'){ return; }
+  const myAgent=current.agentName||'';
+  const nameEl=document.getElementById('mySalesName'); if(nameEl) nameEl.textContent = myAgent?('— '+myAgent):'';
+  const tKey=todayKey();
+  const mine=sales.filter(s=>s.day===tKey && !s.archived && s.type==='truck' && s.agent===myAgent);
+  const total=mine.reduce((a,s)=>a+s.amount,0);
+  // count distinct orders
+  const orders=new Set(mine.map(s=>s.orderId)).size;
+  const st=document.getElementById('myStatSales'); if(st) st.textContent=Number(total).toLocaleString('en-PH');
+  const so=document.getElementById('myStatOrders'); if(so) so.textContent=orders;
+  el.innerHTML = mine.length
+    ? mine.map(s=>`<div class="listItem"><div><b>${s.store}</b>${s.freeCases?` <span class="pill promoTag">+${s.freeCases} free</span>`:''}<br><span class="muted">${s.qty} × ${s.product} · money: ${s.receiver} · ${s.time}</span></div><div class="amount">${peso(s.amount)}</div></div>`).join('')
+    : '<div class="empty">No sales yet today.</div>';
+}
+
+/* ================= TRUCK LOADING & RECONCILIATION ================= */
+function setLoadMode(m){
+  loadMode=m;
+  document.getElementById('loadModeLoad').classList.toggle('on',m==='load');
+  document.getElementById('loadModeReturn').classList.toggle('on',m==='return');
+  document.getElementById('loadQtyLabel').textContent = m==='load' ? 'Cases to load' : 'Cases returned';
+  document.getElementById('loadActionBtn').textContent = m==='load' ? 'Record loaded' : 'Record returned';
+}
+// which truck is selected on the loading screen (agents locked to their own)
+function currentLoadTruck(){
+  const sel=document.getElementById('loadTruck'); if(!sel) return null;
+  const i=parseInt(sel.value); return trucks[i]!==undefined? i : null;
+}
+function fillLoadSelects(){
+  const sel=document.getElementById('loadTruck'); if(!sel) return;
+  const agent = current && current.role==='agent';
+  if(agent){
+    const myIdx=trucks.findIndex(t=>t.agent===current.agentName);
+    const list = myIdx>=0 ? [trucks[myIdx]] : trucks;
+    sel.innerHTML=list.map(t=>`<option value="${trucks.indexOf(t)}">${t.name}${t.agent?' — '+t.agent:''}</option>`).join('');
+    sel.disabled=true;
+  } else {
+    sel.innerHTML=trucks.map((t,i)=>`<option value="${i}">${t.name}${t.agent?' — '+t.agent:''}</option>`).join('');
+    sel.disabled=false;
+  }
+  const lp=document.getElementById('loadProduct');
+  if(lp) lp.innerHTML=products.map((p,i)=>`<option value="${i}">${p.code}</option>`).join('');
+}
+function loadKey(truckName){ return truckName+'|'+todayKey(); }
+function getLoadRow(truckName, pi){
+  const prodCode = products[pi] ? products[pi].code : null;
+  return loads.find(l=>l.truck===truckName && l.day===todayKey() && (l.pi===pi || (prodCode && l.product===prodCode)));
+}
+function prodIndexByCode(code){ return products.findIndex(p=>p.code===code); }
+function recordLoad(){
+  if(!products.length){ toast('Add products in the Stock tab first'); return; }
+  const ti=currentLoadTruck(); if(ti===null){ toast('Choose a truck'); return; }
+  const t=trucks[ti];
+  const pi=parseInt(document.getElementById('loadProduct').value);
+  const qty=parseInt(document.getElementById('loadQty').value);
+  const prod=products[pi];
+  if(!prod){ toast('Choose a product'); return; }
+  if(!qty||qty<1){ toast('Enter number of cases'); return; }
+  let row=getLoadRow(t.name,pi);
+  if(loadMode==='load'){
+    if(qty>prod.stock){ toast('Not enough warehouse stock! Only '+prod.stock+' left'); return; }
+    prod.stock-=qty; // pull from warehouse onto truck
+    if(row){ row.loaded+=qty; } else { loads.push({truck:t.name, day:todayKey(), product:prod.code, pi, loaded:qty, returned:0}); }
+    logAction(`Loaded ${qty} × ${prod.code} onto ${t.name}`);
+    toast('Loaded '+qty+' × '+prod.code);
+  } else {
+    if(!row || row.loaded===0){ toast('Nothing loaded for that product yet'); return; }
+    const maxReturn=row.loaded-row.returned;
+    if(qty>maxReturn){ toast(`Can't return more than loaded. Max ${maxReturn}`); return; }
+    row.returned+=qty; prod.stock+=qty; // back to warehouse
+    logAction(`Returned ${qty} × ${prod.code} from ${t.name}`);
+    toast('Returned '+qty+' × '+prod.code);
+  }
+  document.getElementById('loadQty').value='';
+  persist(); renderAll();
+}
+function editLoadRow(pi){
+  const ti=currentLoadTruck(); if(ti===null) return;
+  const t=trucks[ti]; const row=getLoadRow(t.name,pi); if(!row) return;
+  const prod=products[prodIndexByCode(row.product)] || products[row.pi] || products[pi];
+  const val=prompt(`Correct LOADED cases for ${row.product} on ${t.name}:`, row.loaded);
+  if(val===null) return;
+  const n=parseInt(val);
+  if(!(n>=0)){ toast('Enter a valid number'); return; }
+  if(n<row.returned){ toast('Loaded cannot be less than already returned ('+row.returned+')'); return; }
+  const diff=n-row.loaded; // positive means more onto truck (pull from warehouse)
+  if(prod && diff>0 && diff>prod.stock){ toast('Not enough warehouse stock for the increase. Only '+prod.stock+' left'); return; }
+  if(prod) prod.stock-=diff; // if diff negative, adds back to warehouse
+  row.loaded=n;
+  logAction(`Edited load: ${row.product} on ${t.name} → ${n} loaded`);
+  persist(); renderAll(); toast('Load updated');
+}
+function editReturnRow(pi){
+  const ti=currentLoadTruck(); if(ti===null) return;
+  const t=trucks[ti]; const row=getLoadRow(t.name,pi); if(!row) return;
+  const prod=products[prodIndexByCode(row.product)] || products[row.pi] || products[pi];
+  const val=prompt(`Correct RETURNED cases for ${row.product} on ${t.name}:`, row.returned);
+  if(val===null) return;
+  const n=parseInt(val);
+  if(!(n>=0)){ toast('Enter a valid number'); return; }
+  if(n>row.loaded){ toast('Returned cannot exceed loaded ('+row.loaded+')'); return; }
+  const diff=n-row.returned; // positive means more back to warehouse
+  if(prod) prod.stock+=diff;
+  row.returned=n;
+  logAction(`Edited return: ${row.product} on ${t.name} → ${n} returned`);
+  persist(); renderAll(); toast('Return updated');
+}
+function renderVerify(t){
+  const el=document.getElementById('verifyArea'); if(!el) return;
+  const rows=loads.filter(l=>l.truck===t.name && l.day===todayKey());
+  const verified=isLoadVerified(t.name);
+  const v=verifications.find(x=>x.truck===t.name && x.day===todayKey());
+  const isCashierOrOwner = current && (current.role==='staff' || current.role==='owner');
+  if(!rows.length){
+    el.innerHTML='<div class="empty">Nothing loaded yet for this truck today.</div>';
+    return;
+  }
+  const totalCases=rows.reduce((a,r)=>a+r.loaded,0);
+  let html=`<div style="margin-bottom:10px">Loaded so far: <b>${totalCases} case(s)</b> across ${rows.length} product(s).</div>`;
+  if(verified){
+    html+=`<div class="pill ok" style="padding:10px 12px">✓ Load confirmed by ${v.by} · ${v.time}</div>`;
+    if(isCashierOrOwner){
+      html+=`<button class="btn ghost small" style="margin-top:10px" onclick="unverifyLoad('${t.name.replace(/'/g,"\\'")}')">Undo confirmation (correction needed)</button>`;
+    }
+  } else {
+    html+=`<div class="warn" style="margin-bottom:10px">Not confirmed yet. Truck should not leave until the cashier checks the physical cases against the numbers above.</div>`;
+    if(isCashierOrOwner){
+      html+=`<button class="addBtn" onclick="verifyLoad('${t.name.replace(/'/g,"\\'")}')">✓ Cashier: confirm load matches</button>`;
+    } else {
+      html+=`<div class="muted" style="font-size:13px">Waiting for the cashier to confirm.</div>`;
+    }
+  }
+  el.innerHTML=html;
+}
+function verifyLoad(truckName){
+  if(!(current && (current.role==='staff'||current.role==='owner'))){ toast('Only the cashier or owner can confirm'); return; }
+  if(isLoadVerified(truckName)){ toast('Already confirmed'); return; }
+  verifications.push({truck:truckName, day:todayKey(), by:current.name, time:nowStr()});
+  logAction(`Confirmed the load for ${truckName}`);
+  persist(); renderAll(); toast('Load confirmed for '+truckName);
+}
+function unverifyLoad(truckName){
+  if(!(current && (current.role==='staff'||current.role==='owner'))){ toast('Only the cashier or owner can undo'); return; }
+  verifications = verifications.filter(v=>!(v.truck===truckName && v.day===todayKey()));
+  logAction(`Undid load confirmation for ${truckName}`);
+  persist(); renderAll(); toast('Confirmation removed — cashier can re-check');
+}
+function renderLoading(){
+  fillLoadSelects();
+  const crewEl=document.getElementById('loadCrew');
+  const ti=currentLoadTruck();
+  if(ti===null){ if(crewEl) crewEl.textContent=''; return; }
+  const t=trucks[ti];
+  if(crewEl) crewEl.innerHTML=`Agent: <b>${t.agent||'—'}</b> · Driver: <b>${t.driver||'—'}</b> · Assistant: <b>${t.assistant||'—'}</b>${t.route?' · Route: '+t.route:''}`;
+  document.getElementById('reconTruckName').textContent='— '+t.name;
+  renderVerify(t);
+
+  // rows for this truck today
+  const rows=loads.filter(l=>l.truck===t.name && l.day===todayKey());
+  const tbl=document.getElementById('reconTable');
+  const totalsEl=document.getElementById('reconTotals');
+  if(!rows.length){
+    tbl.innerHTML='<div class="empty">No stock loaded for this truck today yet.</div>';
+    totalsEl.classList.add('hidden'); return;
+  }
+  // sold per product for this truck's agent today (from sales)
+  const tKey=todayKey();
+  function soldCases(prodCode){
+    return sales.filter(s=>s.day===tKey && !s.archived && s.type==='truck' && s.truck===t.name && s.product===prodCode)
+      .reduce((a,s)=>a+s.qty+(s.freeCases||0),0);
+  }
+  let totLoaded=0,totReturned=0,totSold=0,totExpectedSold=0,pesoSales=0;
+  let html=`<div class="listItem" style="font-weight:700;font-size:12px;color:var(--muted)">
+    <div style="flex:2">Product</div><div style="flex:1;text-align:center">Load</div>
+    <div style="flex:1;text-align:center">Ret</div><div style="flex:1;text-align:center">Bal=Sold</div>
+    <div style="flex:1;text-align:center">Actual</div></div>`;
+  rows.forEach(r=>{
+    const balance=r.loaded-r.returned;           // what should have been sold
+    const actual=soldCases(r.product);            // what sales recorded
+    const match = balance===actual;
+    const rpi = (typeof r.pi==='number' && products[r.pi] && products[r.pi].code===r.product) ? r.pi : prodIndexByCode(r.product);
+    totLoaded+=r.loaded; totReturned+=r.returned; totSold+=actual; totExpectedSold+=balance;
+    html+=`<div class="listItem">
+      <div style="flex:2"><b>${r.product}</b>
+        <div style="margin-top:4px;display:flex;gap:6px">
+          <button class="btn small ghost" onclick="editLoadRow(${rpi})">Edit load</button>
+          <button class="btn small ghost" onclick="editReturnRow(${rpi})">Edit ret</button>
+        </div></div>
+      <div style="flex:1;text-align:center">${r.loaded}</div>
+      <div style="flex:1;text-align:center">${r.returned}</div>
+      <div style="flex:1;text-align:center"><b>${balance}</b></div>
+      <div style="flex:1;text-align:center">${match?`<span class="pill ok">${actual}</span>`:`<span class="pill low">${actual}</span>`}</div>
+    </div>`;
+  });
+  tbl.innerHTML=html;
+
+  // peso value of actual sales for this truck today
+  const todayTruckSales = sales.filter(s=>s.day===tKey && !s.archived && s.type==='truck' && s.truck===t.name);
+  pesoSales = todayTruckSales.reduce((a,s)=>a+s.amount,0);
+  const cashFromSales = todayTruckSales.reduce((a,s)=>a+(s.paid||0),0);       // paid on today's orders
+  const newBalances   = todayTruckSales.reduce((a,s)=>a+(s.balance||0),0);    // utang added today
+  const oldCollected  = todayTruckSales.reduce((a,s)=>a+(s.collectedOld||0),0); // old utang paid today
+  const totalCash = cashFromSales + oldCollected;                              // money the agent should hand in
+  const shortage = totExpectedSold - totSold; // >0 means cases missing (loaded-returned exceeds sales)
+  // agent's total outstanding across ALL days for this truck's agent
+  const agentName = t.agent||'(no agent set)';
+  const totalOutstanding = agentCollectibles(agentName).reduce((a,o)=>a+o.owed,0);
+  totalsEl.classList.remove('hidden');
+  totalsEl.innerHTML=`
+    <div style="display:flex;justify-content:space-between;font-size:14px"><span>Total loaded</span><b>${totLoaded} cases</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px"><span>Total returned</span><b>${totReturned} cases</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px"><span>Balance (should be sold)</span><b>${totExpectedSold} cases</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px"><span>Actual recorded sales</span><b>${totSold} cases</b></div>
+    <div style="margin-top:8px">${
+      shortage===0 ? `<div class="pill ok" style="padding:8px 12px">✓ Cases balanced — sold matches loaded minus returned</div>`
+      : shortage>0 ? `<div class="pill low" style="padding:8px 12px">⚠ Shortage: ${shortage} case(s) unaccounted (loaded−returned is more than recorded sales)</div>`
+      : `<div class="pill low" style="padding:8px 12px">⚠ Over: ${Math.abs(shortage)} case(s) sold beyond loaded−returned — check loading entry</div>`
+    }</div>
+
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+      <div style="font-weight:700;font-size:13px;color:var(--muted);margin-bottom:6px">MONEY</div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>Route sales value (goods)</span><b class="amount">${peso(pesoSales)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>Cash from today's sales</span><b class="amount">${peso(cashFromSales)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>Old balance collected</span><b class="amount">${peso(oldCollected)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px;padding-top:6px;border-top:1px dashed var(--line)">
+        <span><b>Cash agent should hand in</b></span><b class="amount" style="color:var(--brand)">${peso(totalCash)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:6px"><span>New balances added today</span><b class="amount" style="color:var(--danger)">${peso(newBalances)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>${agentName}'s total collectibles</span><b class="amount" style="color:var(--danger)">${peso(totalOutstanding)}</b></div>
+    </div>`;
+}
+
+function fillSelects(){
+  const ps=document.getElementById('saleProduct');
+  if(ps){
+    const q=(document.getElementById('prodSearch')?.value||'').toLowerCase().trim();
+    const cur=ps.value;
+    const matches=products.map((p,i)=>({p,i})).filter(o=>!q||o.p.code.toLowerCase().includes(q));
+    const list=matches.length?matches:products.map((p,i)=>({p,i}));
+    ps.innerHTML=list.map(o=>`<option value="${o.i}">${o.p.code} — ${peso(o.p.price)}</option>`).join('');
+    if([...ps.options].some(o=>o.value===cur)) ps.value=cur;
+  }
+  const ts=document.getElementById('saleTruck');
+  const agent = current && current.role==='agent';
+  if(ts){
+    if(agent){
+      // agent only sees their own truck, and it's locked
+      const myIdx=trucks.findIndex(t=>t.agent===current.agentName);
+      const list = myIdx>=0 ? [trucks[myIdx]] : trucks;
+      ts.innerHTML=list.map(t=>`<option value="${trucks.indexOf(t)}">${t.name}${t.agent?' — '+t.agent:''}</option>`).join('');
+      ts.disabled=true;
+    } else {
+      ts.innerHTML=trucks.map((t,i)=>`<option value="${i}">${t.name}${t.agent?' — '+t.agent:''}</option>`).join('');
+      ts.disabled=false;
+    }
+  }
+  const rc=document.getElementById('saleReceiver');
+  if(rc){
+    if(agent){
+      // agent receives their own money by default; still selectable among people if needed, but default to self
+      rc.innerHTML=people.map(p=>`<option value="${p.name}"${p.name===current.name?' selected':''}>${p.name}</option>`).join('');
+    } else {
+      rc.innerHTML=people.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+    }
+  }
+  const pp=document.getElementById('promoProduct');
+  if(pp) pp.innerHTML=products.map((p,i)=>`<option value="${i}">${p.code}</option>`).join('');
+  fillStorePicker();
+  showTruckCrew(); showSalePromo();
+}
+
+function fillStorePicker(){
+  const sp=document.getElementById('storePicker'); if(!sp) return;
+  const saved=[...stores].sort((a,b)=>a.localeCompare(b));
+  sp.innerHTML = `<option value="">— Choose a saved store —</option>`
+    + saved.map(s=>`<option value="${s.replace(/"/g,'&quot;')}">${s}</option>`).join('')
+    + `<option value="__new__">＋ Add a new store / customer</option>`;
+}
+function onStorePick(){
+  const sp=document.getElementById('storePicker');
+  const inp=document.getElementById('newStoreName');
+  if(sp.value==='__new__'){ inp.classList.remove('hidden'); inp.focus(); }
+  else { inp.classList.add('hidden'); inp.value=''; }
+}
+
+// find an active promo for a product name
+function findPromo(productCode){ return promos.find(pr=>pr.product===productCode); }
+
+function filterProducts(){
+  const q=(document.getElementById('prodSearch').value||'').toLowerCase().trim();
+  const sel=document.getElementById('saleProduct'); if(!sel) return;
+  const matches=products.map((p,i)=>({p,i})).filter(o=>!q || o.p.code.toLowerCase().includes(q));
+  const list = matches.length?matches:products.map((p,i)=>({p,i}));
+  sel.innerHTML=list.map(o=>`<option value="${o.i}">${o.p.code} — ${peso(o.p.price)}</option>`).join('');
+  showSalePromo();
+}
+
+function showSalePromo(){
+  const el=document.getElementById('salePromoBanner');
+  const det=document.getElementById('prodDetails');
+  const pi=parseInt(document.getElementById('saleProduct').value);
+  const prod=products[pi];
+  // product details panel — full info from Stock
+  if(det){
+    if(!prod){ det.innerHTML=''; }
+    else {
+      det.innerHTML=`<div class="promoBanner" style="background:var(--soft);border-color:var(--line);color:var(--ink)">
+        <b>${prod.code}</b><br>
+        <span class="muted">Price: ${peso(prod.price)}/case</span>
+      </div>`;
+    }
+  }
+  if(!el) return;
+  if(!prod){ el.innerHTML=''; return; }
+  const promo=findPromo(prod.code);
+  if(!promo){ el.innerHTML=''; return; }
+  const qty=parseInt(document.getElementById('saleQty').value)||0;
+  if(promo.kind==='discount'){
+    const per=promo.amount;
+    const newPrice=Math.max(0,prod.price-per);
+    let msg=`<b>Promo:</b> ${peso(per)} off per case → now ${peso(newPrice)}/case`;
+    if(qty>0) msg+=` · you save ${peso(per*qty)}`;
+    if(promo.note) msg+=`<br><span class="muted">${promo.note}</span>`;
+    el.innerHTML=`<div class="promoBanner">${msg}</div>`;
+  } else {
+    let msg=`<b>Promo:</b> Buy ${promo.buy} get ${promo.get} free`;
+    if(qty>=promo.buy){ const free=Math.floor(qty/promo.buy)*promo.get; msg+=` · you get <b>${free}</b> free case(s)`; }
+    if(promo.note) msg+=`<br><span class="muted">${promo.note}</span>`;
+    el.innerHTML=`<div class="promoBanner">${msg}</div>`;
+  }
+}
+function showTruckCrew(){
+  const el=document.getElementById('crewInfo'); if(!el) return;
+  const i=parseInt(document.getElementById('saleTruck').value); const t=trucks[i];
+  if(!t){ el.textContent=''; return; }
+  el.innerHTML = `Agent: <b>${t.agent||'—'}</b> · Driver: <b>${t.driver||'—'}</b> · Assistant: <b>${t.assistant||'—'}</b>${t.route?' · Route: '+t.route:''}`;
+}
+function setSaleMode(m){
+  if(cart.length){ if(!confirm('Switching will clear the current unsaved order. Continue?')){ return; } }
+  saleMode=m; cart=[]; cartStore='';
+  document.getElementById('segTruck').classList.toggle('on',m==='truck');
+  document.getElementById('segWalk').classList.toggle('on',m==='walkin');
+  document.getElementById('truckFields').classList.toggle('hidden',m!=='truck');
+  document.getElementById('storePicker').value='';
+  document.getElementById('newStoreName').classList.add('hidden');
+  document.getElementById('newStoreName').value='';
+  renderCart();
+}
+
+function renderHome(){
+  const tKey=todayKey();
+  const todaySales=sales.filter(s=>s.day===tKey && !s.archived);
+  const total=todaySales.reduce((a,s)=>a+s.amount,0);
+  const walk=todaySales.filter(s=>s.type==='walkin').reduce((a,s)=>a+s.amount,0);
+  document.getElementById('statSales').textContent=Number(total).toLocaleString('en-PH');
+  document.getElementById('statTxns').textContent=todaySales.length;
+  document.getElementById('statWalk').textContent=Number(walk).toLocaleString('en-PH');
+  document.getElementById('statLow').textContent=products.filter(p=>p.stock<=10).length;
+  const recent=activity.slice(0,5);
+  document.getElementById('recentActivity').innerHTML = recent.length
+    ? recent.map(a=>`<div class="logRow"><b>${a.who}</b> — ${a.action}<div class="t">${a.time}</div></div>`).join('')
+    : '<div class="empty">No activity yet.</div>';
+  // new-day card only for owner
+  const ndc=document.getElementById('newDayCard');
+  if(ndc) ndc.style.display = (current && current.role==='owner') ? '' : 'none';
+}
+function startNewDay(){
+  if(!current || current.role!=='owner'){ toast('Only the owner can start a new day'); return; }
+  const tKey=todayKey();
+  const todaySalesCount=sales.filter(s=>s.day===tKey).length;
+  const todayLoadsCount=loads.filter(l=>l.day===tKey).length;
+  if(!confirm(`Start a new day?\n\nThis clears today's ${todaySalesCount} sale(s) and ${todayLoadsCount} truck load record(s). Any unsold cases still on trucks will be returned to the warehouse.\n\nProducts, prices, trucks, people, and promos are kept.`)) return;
+  // return any un-returned loaded cases back to warehouse so stock stays correct
+  let returnedBack=0;
+  loads.filter(l=>l.day===tKey).forEach(l=>{
+    const remaining=l.loaded-l.returned;
+    if(remaining>0){
+      const prod=products.find(p=>p.code===l.product);
+      if(prod){ prod.stock+=remaining; returnedBack+=remaining; }
+    }
+  });
+  // Clear today's sales for a fresh dashboard — BUT keep any sale that still
+  // carries an unpaid balance or an old-balance payment, so collectibles follow
+  // the agent+store into the next day. We tag them "archived" so they no longer
+  // count toward today's reconciliation but still feed the outstanding total.
+  sales = sales.filter(s=>{
+    if(s.day!==tKey) return true;                 // older days untouched
+    const keepsMoney = (s.balance||0)>0 || (s.collectedOld||0)>0;
+    if(keepsMoney){ s.archived=true; return true; } // keep for collectibles
+    return false;                                  // fully-paid sale can go
+  });
+  loads = loads.filter(l=>l.day!==tKey);
+  verifications = verifications.filter(v=>v.day!==tKey);
+  // clear any open cart
+  cart=[]; cartStore='';
+  // allow these tables to be emptied on purpose during new-day reset
+  allowEmptySync={loads:true, verifications:true, sales:true};
+  logAction(`Started a new day — cleared today's sales & loads${returnedBack?`, returned ${returnedBack} unsold case(s) to warehouse`:''}`);
+  persist(); renderAll(); toast('New day started — fresh sales & loads');
+  setTimeout(()=>{ allowEmptySync={}; }, 1500);
+}
+
+function getCurrentStore(){
+  const sp=document.getElementById('storePicker');
+  if(sp.value==='__new__'){ return document.getElementById('newStoreName').value.trim(); }
+  return sp.value.trim();
+}
+
+function computeLine(prod, qty, customPrice){
+  const promo=findPromo(prod.code);
+  let unitPrice=prod.price, freeCases=0, promoLabel='';
+  if(customPrice!==undefined && customPrice!==null && customPrice!==''){
+    unitPrice=Math.max(0,parseInt(customPrice)); promoLabel='custom price';
+  } else if(promo){
+    if(promo.kind==='discount'){ unitPrice=Math.max(0,prod.price-promo.amount); promoLabel=`${peso(promo.amount)} off/case`; }
+    else { freeCases=Math.floor(qty/promo.buy)*promo.get; promoLabel=`buy ${promo.buy} get ${promo.get} free`; }
+  }
+  return { unitPrice, freeCases, promoLabel, amount:unitPrice*qty, totalCases:qty+freeCases, customPrice:(customPrice!==undefined&&customPrice!==null&&customPrice!=='')?parseInt(customPrice):null };
+}
+
+function addToCart(){
+  const store=getCurrentStore();
+  if(!store){ toast('Choose or enter a store / customer first'); return; }
+  // lock the store for this order once started
+  if(cart.length && cartStore && store!==cartStore){
+    toast('Finish or cancel the current order first'); return;
+  }
+  cartStore=store;
+  const pi=parseInt(document.getElementById('saleProduct').value);
+  const qty=parseInt(document.getElementById('saleQty').value);
+  const prod=products[pi];
+  if(!qty||qty<1){ toast('Enter number of cases'); return; }
+  const line=computeLine(prod,qty);
+  // check stock against what's already in cart for this product
+  const already=cart.filter(c=>c.pi===pi).reduce((a,c)=>a+c.totalCases,0);
+  if(line.totalCases+already>prod.stock){ toast(`Not enough stock. Only ${prod.stock-already} left for ${prod.code}`); return; }
+  cart.push({ pi, product:prod.code, qty, ...line });
+  document.getElementById('saleQty').value='';
+  showSalePromo(); renderCart();
+  toast('Added: '+qty+' × '+prod.code);
+}
+
+function editCartLine(idx){
+  const line=cart[idx];
+  const choice=prompt(
+    `Edit "${line.product}" (${line.qty} cases):\n\n`+
+    `Type 1 = change number of cases\n`+
+    `Type 2 = change the product\n`+
+    `Type 3 = set a custom price for this line\n`,
+    '1');
+  if(choice===null) return;
+  const c=choice.trim();
+
+  if(c==='1'){
+    const val=prompt('Number of cases for '+line.product+':', line.qty);
+    if(val===null) return;
+    const q=parseInt(val);
+    if(!q||q<1){ toast('Enter a valid number'); return; }
+    const prod=products[line.pi];
+    const recomputed=computeLine(prod,q,line.customPrice);
+    const otherSame=cart.filter((cc,i)=>i!==idx && cc.pi===line.pi).reduce((a,cc)=>a+cc.totalCases,0);
+    if(recomputed.totalCases+otherSame>prod.stock){ toast(`Not enough stock. Only ${prod.stock-otherSame} left`); return; }
+    cart[idx]={ pi:line.pi, product:line.product, qty:q, ...recomputed };
+    renderCart(); toast('Cases updated');
+
+  } else if(c==='2'){
+    const listTxt=products.map((p,i)=>`${i+1}. ${p.code}`).join('\n');
+    const pick=prompt('Choose new product by number:\n\n'+listTxt, '');
+    if(pick===null) return;
+    const pidx=parseInt(pick)-1;
+    if(!(pidx>=0 && pidx<products.length)){ toast('Invalid product number'); return; }
+    const prod=products[pidx];
+    const recomputed=computeLine(prod,line.qty); // fresh promo for new product, drop custom price
+    const otherSame=cart.filter((cc,i)=>i!==idx && cc.pi===pidx).reduce((a,cc)=>a+cc.totalCases,0);
+    if(recomputed.totalCases+otherSame>prod.stock){ toast(`Not enough stock of ${prod.code}. Only ${prod.stock-otherSame} left`); return; }
+    cart[idx]={ pi:pidx, product:prod.code, qty:line.qty, ...recomputed };
+    renderCart(); toast('Product changed');
+
+  } else if(c==='3'){
+    const prod=products[line.pi];
+    const val=prompt(`Custom price per case for ${line.product} (normal ${peso(prod.price)}):`, line.unitPrice);
+    if(val===null) return;
+    const cp=parseInt(val);
+    if(!(cp>=0)){ toast('Enter a valid price'); return; }
+    const recomputed=computeLine(prod,line.qty,cp);
+    cart[idx]={ pi:line.pi, product:line.product, qty:line.qty, ...recomputed };
+    renderCart(); toast('Custom price set');
+  } else {
+    toast('Type 1, 2, or 3');
+  }
+}
+function removeCartLine(idx){
+  cart.splice(idx,1);
+  if(!cart.length) cartStore='';
+  renderCart();
+}
+function cancelCart(){
+  if(cart.length && !confirm('Cancel this whole order?')) return;
+  cart=[]; cartStore=''; renderCart(); toast('Order cancelled');
+}
+
+function setPayMode(m){
+  payMode=m;
+  document.getElementById('payFullBtn').classList.toggle('on',m==='full');
+  document.getElementById('payPartialBtn').classList.toggle('on',m==='partial');
+  document.getElementById('partialFields').classList.toggle('hidden',m!=='partial');
+  if(m==='full'){ document.getElementById('paidNow').value=''; }
+  showPaySummary();
+}
+function cartTotalAmount(){ return cart.reduce((a,c)=>a+c.amount,0); }
+function showPaySummary(){
+  const total=cartTotalAmount();
+  const sumEl=document.getElementById('paySummary');
+  if(payMode==='partial' && sumEl){
+    const paid=parseFloat(document.getElementById('paidNow').value)||0;
+    const bal=Math.max(0,total-paid);
+    sumEl.innerHTML = paid>total
+      ? `<div class="pill low" style="padding:6px 10px">Amount paid is more than the order total. Lower it, or use "Paid in full".</div>`
+      : `<div style="display:flex;justify-content:space-between;font-size:14px"><span>New balance (utang)</span><b class="amount" style="color:var(--danger)">${peso(bal)}</b></div>`;
+  }
+}
+function completeOrder(){
+  if(!cart.length){ toast('Add at least one product'); return; }
+  const store=cartStore;
+  const receiver=document.getElementById('saleReceiver').value;
+  let truckName='—', agent='Walk-in', type='walkin';
+  if(saleMode==='truck'){
+    const ti=parseInt(document.getElementById('saleTruck').value); const t=trucks[ti];
+    truckName=t.name; agent=t.agent||'(no agent set)'; type='truck';
+    // route sales require a confirmed load before leaving
+    if(!isLoadVerified(truckName)){
+      toast('Load not verified yet — cashier must confirm the load first');
+      return;
+    }
+  }
+  // final stock check + commit
+  for(const line of cart){
+    const prod=products[line.pi];
+    if(line.totalCases>prod.stock){ toast(`Stock changed — not enough ${prod.code}. Fix the order.`); return; }
+  }
+  const orderTotal=cartTotalAmount();
+  // work out payment
+  let paidNow=orderTotal, balance=0, collectedOld=0;
+  if(type==='truck' && payMode==='partial'){
+    paidNow=parseFloat(document.getElementById('paidNow').value)||0;
+    if(paidNow>orderTotal){ toast('Amount paid is more than the order total'); return; }
+    balance=Math.round(orderTotal-paidNow);
+  }
+  if(type==='truck'){
+    const oldOwed=outstandingFor(agent,store);
+    collectedOld=parseFloat(document.getElementById('collectOld').value)||0;
+    if(collectedOld>oldOwed){ toast(`Old balance is only ${peso(oldOwed)} — collect that or less`); return; }
+    collectedOld=Math.round(collectedOld);
+  }
+
+  const orderId='ORD'+Date.now();
+  // attach payment info to the FIRST line so per-order totals aren't double counted
+  cart.forEach((line,idx)=>{
+    const prod=products[line.pi];
+    prod.stock-=line.totalCases;
+    sales.unshift({ orderId, type, store, product:line.product, qty:line.qty, freeCases:line.freeCases,
+      amount:line.amount, unitPrice:line.unitPrice, truck:truckName, agent, receiver,
+      promo:line.promoLabel, by:current.name, time:nowStr(), day:todayKey(),
+      // payment fields live on the first line of the order only
+      orderTotal: idx===0? orderTotal : 0,
+      paid:       idx===0? paidNow : 0,
+      balance:    idx===0? balance : 0,
+      collectedOld: idx===0? collectedOld : 0 });
+  });
+  if(store && !stores.includes(store)) stores.push(store);
+  const tag = type==='truck' ? `${truckName} / ${agent}` : 'Walk-in';
+  let payNote='';
+  if(type==='truck'){
+    payNote = balance>0 ? ` — paid ${peso(paidNow)}, balance ${peso(balance)}` : ` — paid in full`;
+    if(collectedOld>0) payNote += `, +${peso(collectedOld)} old balance`;
+  }
+  logAction(`Completed order for ${store} — ${cart.length} item(s), ${peso(orderTotal)} — ${tag}, money to ${receiver}${payNote}`);
+  cart=[]; cartStore='';
+  document.getElementById('storePicker').value='';
+  document.getElementById('newStoreName').classList.add('hidden');
+  document.getElementById('newStoreName').value='';
+  // reset pay UI
+  setPayMode('full');
+  const co=document.getElementById('collectOld'); if(co) co.value='';
+  persist(); renderAll();
+  toast('Order completed: '+peso(orderTotal));
+}
+
+function renderCart(){
+  const el=document.getElementById('cartList');
+  const nameEl=document.getElementById('cartStoreName');
+  const totalRow=document.getElementById('cartTotalRow');
+  const completeBtn=document.getElementById('completeBtn');
+  const cancelBtn=document.getElementById('cancelCartBtn');
+  const payArea=document.getElementById('payArea');
+  const oldBanner=document.getElementById('oldBalanceBanner');
+  const collectArea=document.getElementById('collectArea');
+  if(!el) return;
+  nameEl.textContent = cartStore ? '— '+cartStore : '';
+
+  // Show old balance for this agent+store (route sales only)
+  let agentName='';
+  if(saleMode==='truck'){
+    const ti=parseInt(document.getElementById('saleTruck').value); const t=trucks[ti];
+    agentName = t? (t.agent||'(no agent set)') : '';
+  }
+  const oldOwed = (saleMode==='truck' && cartStore && agentName) ? outstandingFor(agentName,cartStore) : 0;
+  if(oldBanner){
+    oldBanner.innerHTML = oldOwed>0
+      ? `<div class="warn" style="margin-bottom:10px">This store owes <b>${peso(oldOwed)}</b> from before on ${agentName}'s route. You can collect part or all of it below.</div>`
+      : '';
+  }
+  if(collectArea) collectArea.classList.toggle('hidden', oldOwed<=0);
+
+  if(!cart.length){
+    el.innerHTML='<div class="empty">No items added yet.</div>';
+    totalRow.classList.add('hidden'); completeBtn.style.display='none'; cancelBtn.style.display='none';
+    if(payArea) payArea.classList.add('hidden');
+    return;
+  }
+  let total=0;
+  el.innerHTML = cart.map((c,i)=>{ total+=c.amount; return `<div class="listItem">
+    <div><b>${c.qty} × ${c.product}</b>${c.freeCases?` <span class="pill promoTag">+${c.freeCases} free</span>`:''}
+      <br><span class="muted">${peso(c.unitPrice)}/case${c.promoLabel?' · '+c.promoLabel:''}</span></div>
+    <div style="text-align:right">
+      <div class="amount">${peso(c.amount)}</div>
+      <div style="margin-top:4px;display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn small ghost" onclick="editCartLine(${i})">Edit</button>
+        <button class="btn small ghost" onclick="removeCartLine(${i})">✕</button>
+      </div>
+    </div></div>`; }).join('');
+  document.getElementById('cartTotal').textContent=peso(total);
+  totalRow.classList.remove('hidden');
+  // payment area only for truck route sales
+  if(payArea) payArea.classList.toggle('hidden', saleMode!=='truck');
+  showPaySummary();
+  completeBtn.style.display='block'; cancelBtn.style.display='block';
+}
+
+function renderSales(){
+  const tKey=todayKey(); const list=sales.filter(s=>s.day===tKey && !s.archived);
+  const el=document.getElementById('salesList');
+  el.innerHTML = list.length
+    ? list.map(s=>`<div class="listItem">
+        <div><b>${s.store}</b> ${s.type==='truck'?`<span class="pill truck">${s.truck}</span>`:`<span class="pill staff">Walk-in</span>`}${s.promo?` <span class="pill promoTag">PROMO</span>`:''}
+        <br><span class="muted">${s.qty} × ${s.product}${s.freeCases?` (+${s.freeCases} free)`:''} · ${s.type==='truck'?'Agent: '+s.agent+' · ':''}money: ${s.receiver} · ${s.time}</span></div>
+        <div class="amount">${peso(s.amount)}</div></div>`).join('')
+    : '<div class="empty">No sales recorded yet today.</div>';
+}
+
+function renderAgents(){
+  const tKey=todayKey();
+  const truckSales=sales.filter(s=>s.day===tKey && !s.archived && s.type==='truck');
+  const byAgent={};
+  truckSales.forEach(s=>{ (byAgent[s.agent]=byAgent[s.agent]||[]).push(s); });
+  const el=document.getElementById('agentReport'); const agents=Object.keys(byAgent);
+  el.innerHTML = agents.length ? agents.map(ag=>{
+    const rows=byAgent[ag]; const tot=rows.reduce((a,s)=>a+s.amount,0); const truckName=rows[0].truck;
+    const cash=rows.reduce((a,s)=>a+(s.paid||0),0);
+    const newBal=rows.reduce((a,s)=>a+(s.balance||0),0);
+    const oldColl=rows.reduce((a,s)=>a+(s.collectedOld||0),0);
+    // group order rows by orderId so payment status shows once per order
+    const seen={};
+    return `<div class="agentBlock">
+      <div class="head"><div class="nm">${ag} <span class="pill truck">${truckName}</span></div><div class="amount">${peso(tot)}</div></div>
+      ${rows.map(s=>{
+        const isFirst = s.orderId && !seen[s.orderId] && (seen[s.orderId]=true);
+        let payTag='';
+        if(isFirst && (s.balance||0)>0) payTag=` <span class="pill low">utang ${peso(s.balance)}</span>`;
+        else if(isFirst && s.orderTotal>0) payTag=` <span class="pill ok">paid</span>`;
+        if(isFirst && (s.collectedOld||0)>0) payTag+=` <span class="pill ok">+${peso(s.collectedOld)} old</span>`;
+        return `<div class="listItem"><div><b>${s.store}</b>${payTag}<br><span class="muted">${s.qty} × ${s.product} · ${s.time}</span></div><div class="amount">${peso(s.amount)}</div></div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)"><span>Cash collected (in hand)</span><b class="amount" style="color:var(--brand)">${peso(cash+oldColl)}</b></div>
+      ${newBal>0?`<div style="display:flex;justify-content:space-between;font-size:13px"><span>New utang today</span><b class="amount" style="color:var(--danger)">${peso(newBal)}</b></div>`:''}
+    </div>`;
+  }).join('') : '<div class="empty">No truck sales yet today.</div>';
+  const walkins=sales.filter(s=>s.day===tKey && !s.archived && s.type==='walkin');
+  const wtot=walkins.reduce((a,s)=>a+s.amount,0);
+  const wel=document.getElementById('walkinReport');
+  wel.innerHTML = walkins.length
+    ? `<div class="agentBlock"><div class="head"><div class="nm">Walk-in total</div><div class="amount">${peso(wtot)}</div></div>
+       ${walkins.map(s=>`<div class="listItem"><div><b>${s.store}</b><br><span class="muted">${s.qty} × ${s.product} · money: ${s.receiver} · ${s.time}</span></div><div class="amount">${peso(s.amount)}</div></div>`).join('')}</div>`
+    : '<div class="empty">No walk-in sales yet today.</div>';
+}
+
+function renderCollect(){
+  const el=document.getElementById('collectList'); if(!el) return;
+  const scopeEl=document.getElementById('collectScopeName');
+  const isAgent = current && current.role==='agent';
+  // which agents to show: agent sees only their own; owner/cashier see all
+  let agentNames=[];
+  if(isAgent){
+    agentNames=[current.agentName || current.name];
+    if(scopeEl) scopeEl.textContent='— '+(current.agentName||current.name);
+  } else {
+    // all agents that have any collectible
+    const set=new Set();
+    sales.forEach(s=>{ if(s.type==='truck') set.add(s.agent); });
+    agentNames=[...set];
+    if(scopeEl) scopeEl.textContent='— all agents';
+  }
+  let html=''; let grand=0;
+  agentNames.forEach(ag=>{
+    const items=agentCollectibles(ag);
+    const subtotal=items.reduce((a,o)=>a+o.owed,0);
+    grand+=subtotal;
+    if(!items.length && isAgent){
+      html+=`<div class="empty">No outstanding balances on your route. 🎉</div>`;
+      return;
+    }
+    if(!items.length) return;
+    html+=`<div class="agentBlock">
+      <div class="head"><div class="nm">${ag}</div><div class="amount" style="color:var(--danger)">${peso(subtotal)}</div></div>
+      ${items.map(o=>`<div class="listItem"><div><b>${o.store}</b><br><span class="muted">owes on ${ag}'s route</span></div><div class="amount" style="color:var(--danger)">${peso(o.owed)}</div></div>`).join('')}
+    </div>`;
+  });
+  if(!html) html='<div class="empty">No outstanding balances. Everything is paid up. 🎉</div>';
+  else if(!isAgent) html=`<div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--line)"><b>Total collectibles (all routes)</b><b class="amount" style="color:var(--danger)">${peso(grand)}</b></div>`+html;
+  el.innerHTML=html;
+}
+
+function renderStock(){
+  const el=document.getElementById('stockList');
+  const owner = current && current.role==='owner';
+  if(!products.length){
+    el.innerHTML='<div class="empty">No products yet. Use "Add a new product" below, or tap "Add 20 blank slots" to fill in your real stock names and quantities.</div>';
+    return;
+  }
+  el.innerHTML=products.map((p,i)=>{
+    const isBlank = !p.code || p.code.startsWith('(blank');
+    const low=p.stock<=10;
+    const nameShown = isBlank ? `<span class="muted"><i>Empty slot — tap Edit to fill in</i></span>` : `<b>${p.code}</b>`;
+    return `<div class="listItem">
+      <div style="flex:1">${nameShown}<br><span class="muted">${isBlank?'no price set':peso(p.price)}</span>
+        <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn small ghost" onclick="addStockPrompt(${i})">＋ Add stock</button>
+          <button class="btn small ghost" onclick="editProduct(${i})">Edit name/price</button>
+          ${owner?`<button class="btn small ghost" onclick="removeProduct(${i})">Remove</button>`:''}
+        </div>
+      </div>
+      <div><span class="pill ${low?'low':'ok'}">${p.stock} left</span></div></div>`;
+  }).join('');
+}
+function add20Blanks(){
+  if(!current || current.role!=='owner'){ toast('Only the owner can add product slots'); return; }
+  let n=0;
+  for(let k=0;k<20;k++){
+    products.push({ code:`(blank ${products.length+1})`, price:0, stock:0 });
+    n++;
+  }
+  logAction(`Added ${n} blank product slots`);
+  persist(); renderAll(); toast('Added 20 blank slots — tap Edit on each to fill in');
+}
+function addStockPrompt(i){ addStock(i); }
+function editProduct(i){
+  const p=products[i];
+  const isBlank = !p.code || p.code.startsWith('(blank');
+  const newName=prompt('Product name:', isBlank ? '' : p.code);
+  if(newName===null) return;
+  const nm=newName.trim();
+  if(!nm){ toast('Name cannot be empty'); return; }
+  if(products.some((x,j)=>j!==i && x.code.toLowerCase()===nm.toLowerCase())){ toast('Another product already has that name'); return; }
+  const newPrice=prompt('Price per case (₱):', isBlank ? '' : p.price);
+  if(newPrice===null) return;
+  const pr=parseInt(newPrice);
+  if(!(pr>=0)){ toast('Enter a valid price'); return; }
+  const newStock=prompt('Quantity in warehouse (cases):', p.stock);
+  if(newStock===null) return;
+  const st=parseInt(newStock);
+  if(!(st>=0)){ toast('Enter a valid quantity'); return; }
+  const oldName=p.code;
+  p.code=nm; p.price=pr; p.stock=st;
+  // keep loads and sales product names in sync if renamed
+  if(oldName!==nm){
+    loads.forEach(l=>{ if(l.product===oldName) l.product=nm; });
+    sales.forEach(s=>{ if(s.product===oldName) s.product=nm; });
+    promos.forEach(pr2=>{ if(pr2.product===oldName) pr2.product=nm; });
+  }
+  logAction(`Set product: ${nm} (${peso(pr)}, ${st} cases)`);
+  persist(); renderAll(); toast('Product saved');
+}
+function removeProduct(i){
+  if(!current || current.role!=='owner'){ toast('Only the owner can remove products'); return; }
+  if(!confirm('Remove '+products[i].code+'? This does not delete past sales.')) return;
+  const nm=products[i].code; products.splice(i,1);
+  logAction(`Removed product: ${nm}`); persist(); renderAll(); toast('Product removed');
+}
+function addStock(i){
+  const add=prompt('Add delivered cases for '+products[i].code+':',''); if(add===null) return;
+  const n=parseInt(add); if(!n||n<1){ toast('Enter a valid number'); return; }
+  products[i].stock+=n; logAction(`Added ${n} cases of ${products[i].code} (delivery)`); persist(); renderAll(); toast('Stock updated');
+}
+function addProduct(){
+  const name=document.getElementById('npName').value.trim();
+  const price=parseInt(document.getElementById('npPrice').value);
+  const stock=parseInt(document.getElementById('npStock').value);
+  if(!name){ toast('Enter a product name'); return; }
+  if(!(price>=0)){ toast('Enter a valid price'); return; }
+  if(products.some(p=>p.code.toLowerCase()===name.toLowerCase())){ toast('That product already exists'); return; }
+  products.push({ code:name, price, stock: stock>=0?stock:0 });
+  logAction(`Added new product: ${name} (${peso(price)}, ${stock||0} cases)`);
+  ['npName','npPrice','npStock'].forEach(id=>document.getElementById(id).value='');
+  persist(); renderAll(); toast('Product added');
+}
+
+/* PROMOS */
+function setPromoType(t){
+  promoType=t;
+  document.getElementById('promoTypeDisc').classList.toggle('on',t==='discount');
+  document.getElementById('promoTypeFree').classList.toggle('on',t==='freebie');
+  document.getElementById('promoDiscFields').classList.toggle('hidden',t!=='discount');
+  document.getElementById('promoFreeFields').classList.toggle('hidden',t!=='freebie');
+}
+function addPromo(){
+  if(!current || current.role!=='owner'){ toast('Only the owner can set promos'); return; }
+  const pi=parseInt(document.getElementById('promoProduct').value);
+  const prod=products[pi]; if(!prod){ toast('Choose a product'); return; }
+  const note=document.getElementById('promoNote').value.trim();
+  let promo;
+  if(promoType==='discount'){
+    const amount=parseInt(document.getElementById('promoAmount').value);
+    if(!(amount>0)){ toast('Enter a peso discount'); return; }
+    promo={ product:prod.code, kind:'discount', amount, note };
+  } else {
+    const buy=parseInt(document.getElementById('promoBuy').value);
+    const get=parseInt(document.getElementById('promoGet').value);
+    if(!(buy>0)||!(get>0)){ toast('Enter buy and free amounts'); return; }
+    promo={ product:prod.code, kind:'freebie', buy, get, note };
+  }
+  // replace any existing promo on same product
+  promos = promos.filter(p=>p.product!==prod.code);
+  promos.push(promo);
+  logAction(`Set promo on ${prod.code}: ${promoType==='discount'?peso(promo.amount)+' off':'buy '+promo.buy+' get '+promo.get+' free'}`);
+  ['promoAmount','promoBuy','promoGet','promoNote'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  persist(); renderAll(); toast('Promo saved');
+}
+function removePromo(i){
+  if(!current || current.role!=='owner'){ toast('Only the owner can remove promos'); return; }
+  if(!confirm('End this promo?')) return;
+  const nm=promos[i].product; promos.splice(i,1); logAction(`Ended promo on ${nm}`); persist(); renderAll(); toast('Promo ended');
+}
+function renderPromos(){
+  const el=document.getElementById('promoList'); if(!el) return;
+  const owner = current && current.role==='owner';
+  // show/hide the owner-only add card
+  const warn=document.getElementById('promoOwnerWarn');
+  const addCard=document.getElementById('addPromoCard');
+  if(addCard) addCard.style.display = owner ? '' : 'none';
+  el.innerHTML = promos.length ? promos.map((p,i)=>{
+    const desc = p.kind==='discount' ? `${peso(p.amount)} off per case` : `Buy ${p.buy} get ${p.get} free`;
+    return `<div class="listItem">
+      <div><b>${p.product}</b> <span class="pill promoTag">PROMO</span><br>
+      <span class="muted">${desc}${p.note?' · '+p.note:''}</span></div>
+      ${owner?`<button class="btn small ghost" onclick="removePromo(${i})">End</button>`:'<span class="muted">active</span>'}
+    </div>`;
+  }).join('') : '<div class="empty">No active promos.</div>';
+}
+
+function renderLog(){
+  const el=document.getElementById('fullLog');
+  el.innerHTML = activity.length ? activity.map(a=>`<div class="logRow"><b>${a.who}</b> — ${a.action}<div class="t">${a.time}</div></div>`).join('') : '<div class="empty">No activity yet.</div>';
+}
+
+function renderTrucks(){
+  const el=document.getElementById('trucksList'); if(!el) return;
+  el.innerHTML=trucks.map((t,i)=>`<div class="listItem">
+    <div><b>${t.name}</b>${t.route?` <span class="pill truck">${t.route}</span>`:''}
+      <div class="crew">Agent: <b>${t.agent||'—'}</b> · Driver: <b>${t.driver||'—'}</b> · Assistant: <b>${t.assistant||'—'}</b></div></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn small ghost" onclick="editTruck(${i})">Edit</button>
+      ${trucks.length>1?`<button class="btn small ghost" onclick="removeTruck(${i})">Remove</button>`:''}
+    </div></div>`).join('');
+}
+function editTruck(i){
+  editingTruck=i; const t=trucks[i];
+  document.getElementById('tName').value=t.name;
+  document.getElementById('tDriver').value=t.driver;
+  document.getElementById('tAgent').value=t.agent;
+  document.getElementById('tAssistant').value=t.assistant;
+  document.getElementById('tRoute').value=t.route||'';
+  document.getElementById('editHint').textContent='Editing '+t.name+' — change fields above and Save.';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function saveTruck(){
+  const name=document.getElementById('tName').value.trim();
+  const driver=document.getElementById('tDriver').value.trim();
+  const agent=document.getElementById('tAgent').value.trim();
+  const assistant=document.getElementById('tAssistant').value.trim();
+  const route=document.getElementById('tRoute').value.trim();
+  if(!name){ toast('Enter truck name'); return; }
+  if(!agent){ toast('Enter the agent (responsible for sales)'); return; }
+  if(editingTruck>=0){
+    trucks[editingTruck]={name,driver,agent,assistant,route}; logAction(`Edited ${name} (agent: ${agent})`); editingTruck=-1;
+  } else {
+    if(trucks.some(t=>t.name===name)){ toast('That truck name already exists'); return; }
+    trucks.push({name,driver,agent,assistant,route}); logAction(`Added ${name} (agent: ${agent})`);
+  }
+  ['tName','tDriver','tAgent','tAssistant','tRoute'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('editHint').textContent=''; persist(); renderAll(); toast('Truck saved');
+}
+function removeTruck(i){
+  if(!confirm('Remove '+trucks[i].name+'?')) return;
+  const nm=trucks[i].name; trucks.splice(i,1); logAction(`Removed ${nm}`); persist(); renderAll(); toast('Truck removed');
+}
+
+function renderPeople(){
+  const el=document.getElementById('peopleList'); if(!el) return;
+  el.innerHTML=people.map((p,i)=>`<div class="listItem">
+    <div><b>${p.name}</b> <span class="pill ${p.role==='owner'?'owner':(p.role==='agent'?'truck':'staff')}">${p.role}</span>${p.role==='agent'&&p.agentName?` <span class="muted">(${p.agentName})</span>`:''}<br><span class="muted">PIN: ••••</span></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn small ghost" onclick="changePin(${i})">Change PIN</button>
+      ${people.length>1 && p.name!==current.name ? `<button class="btn small ghost" onclick="removePerson(${i})">Remove</button>` : ''}
+    </div>
+  </div>`).join('');
+}
+function changePin(i){
+  if(!current || current.role!=='owner'){ toast('Only the owner can change PINs'); return; }
+  const p=people[i];
+  const np=prompt('Set a new PIN for '+p.name+' (4–6 digits):','');
+  if(np===null) return;
+  const pin=np.trim();
+  if(!/^\d{4,6}$/.test(pin)){ toast('PIN must be 4–6 digits'); return; }
+  people[i].pin=pin;
+  if(current.name===p.name) current.pin=pin; // keep session in sync
+  logAction(`Changed PIN for ${p.name}`);
+  persist(); renderAll(); toast('PIN updated for '+p.name);
+}
+function onRoleChange(){
+  const role=document.getElementById('newRole').value;
+  const wrap=document.getElementById('agentLinkWrap');
+  if(!wrap) return;
+  if(role==='agent'){
+    wrap.classList.remove('hidden');
+    const sel=document.getElementById('newAgentTruck');
+    sel.innerHTML=trucks.map((t,i)=>`<option value="${t.agent}">${t.name} — ${t.agent||'(no agent)'}</option>`).join('');
+  } else {
+    wrap.classList.add('hidden');
+  }
+}
+function addPerson(){
+  const name=document.getElementById('newName').value.trim();
+  const role=document.getElementById('newRole').value;
+  const pin=document.getElementById('newPin').value.trim();
+  if(!name){ toast('Enter a name'); return; }
+  if(!/^\d{4,6}$/.test(pin)){ toast('PIN must be 4–6 digits'); return; }
+  if(people.some(p=>p.name===name)){ toast('That name already exists'); return; }
+  const person={name,role,pin};
+  if(role==='agent'){
+    const at=document.getElementById('newAgentTruck').value;
+    if(!at){ toast('Pick which truck-agent this login is'); return; }
+    person.agentName=at;
+  }
+  people.push(person); logAction(`Added new person: ${name} (${role})`);
+  document.getElementById('newName').value=''; document.getElementById('newPin').value='';
+  onRoleChange(); persist(); renderAll(); toast('Person added');
+}
+function removePerson(i){
+  if(!confirm('Remove '+people[i].name+'?')) return;
+  const removed=people[i].name; people.splice(i,1); logAction(`Removed person: ${removed}`); persist(); renderAll(); toast('Person removed');
+}
+
+// ---- Cloud startup ----
+async function boot(){
+  const sel=document.getElementById('userSelect');
+  if(sel) sel.innerHTML='<option>Loading…</option>';
+  try{
+    await loadAll();
+    // Safety: if the database somehow has no people, seed the two defaults locally then push
+    if(!people.length){
+      people=[{name:'Owner - Kap Janz',role:'owner',pin:'1111'},{name:'Cashier - Jocelyn',role:'staff',pin:'2222'}];
+      await syncTable('people');
+    }
+    fillUserSelect();
+    startRealtime();
+  }catch(e){
+    console.error('Boot failed', e);
+    if(sel) sel.innerHTML='<option>Connection error</option>';
+    const err=document.getElementById('loginErr');
+    if(err) err.textContent='Cannot reach the server. Check your internet and refresh.';
+  }
+}
+document.getElementById('pinInput').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+// ─────── REPORTS ──────────────────────────────────────────────────────────
+function loadWeeklyReport(){
+  const weekInput = document.getElementById('reportWeek').value;
+  if(!weekInput) return;
+  
+  const [year, week] = weekInput.split('-W').map(Number);
+  const startDate = getStartOfWeek(year, week);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 6);
+  
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:20px">
+    <tr style="background:#52B788;color:white;font-weight:bold">
+      <th style="border:1px solid #999;padding:8px;text-align:left">Truck</th>
+      <th style="border:1px solid #999;padding:8px;text-align:center">Cases</th>
+      <th style="border:1px solid #999;padding:8px;text-align:right">Amount (₱)</th>
+      <th style="border:1px solid #999;padding:8px;text-align:right">Paid (₱)</th>
+      <th style="border:1px solid #999;padding:8px;text-align:right">Utang (₱)</th>
+    </tr>`;
+  
+  let totalCases=0, totalAmount=0, totalPaid=0, totalUtang=0;
+  const trucks = [...new Set(sales.map(s=>s.truck))].sort();
+  
+  trucks.forEach(truck=>{
+    const truckSales = sales.filter(s=>s.truck===truck && new Date(s.time)>=startDate && new Date(s.time)<=endDate);
+    const cases = truckSales.reduce((a,s)=>a+s.qty,0);
+    const amount = truckSales.reduce((a,s)=>a+s.amount,0);
+    const paid = truckSales.reduce((a,s)=>a+s.paid,0);
+    const utang = amount - paid;
+    
+    html += `<tr style="border:1px solid #ccc;background:${trucks.indexOf(truck)%2===0?'#f9f9f9':'white'}">
+      <td style="border:1px solid #ccc;padding:8px">${truck}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:center">${cases}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:right">₱${amount.toFixed(2)}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:right">₱${paid.toFixed(2)}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:right">₱${utang.toFixed(2)}</td>
+    </tr>`;
+    totalCases+=cases; totalAmount+=amount; totalPaid+=paid; totalUtang+=utang;
+  });
+  
+  html += `<tr style="background:#F4A261;font-weight:bold">
+    <td style="border:2px solid #999;padding:8px">TOTAL</td>
+    <td style="border:2px solid #999;padding:8px;text-align:center">${totalCases}</td>
+    <td style="border:2px solid #999;padding:8px;text-align:right">₱${totalAmount.toFixed(2)}</td>
+    <td style="border:2px solid #999;padding:8px;text-align:right">₱${totalPaid.toFixed(2)}</td>
+    <td style="border:2px solid #999;padding:8px;text-align:right">₱${totalUtang.toFixed(2)}</td>
+  </tr></table>`;
+  
+  document.getElementById('weeklyReportContent').innerHTML=html;
+}
+
+function loadMonthlySummary(){
+  const monthInput = document.getElementById('reportMonth').value;
+  if(!monthInput) return;
+  
+  const [year, month] = monthInput.split('-').map(Number);
+  const startDate = new Date(year, month-1, 1);
+  const endDate = new Date(year, month, 0);
+  
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:20px">
+    <tr style="background:#1B4332;color:white;font-weight:bold">
+      <th style="border:1px solid #999;padding:8px;text-align:left">Truck</th>
+      <th style="border:1px solid #999;padding:8px;text-align:center">Cases</th>
+      <th style="border:1px solid #999;padding:8px;text-align:right">Amount (₱)</th>
+      <th style="border:1px solid #999;padding:8px;text-align:right">Paid (₱)</th>
+      <th style="border:1px solid #999;padding:8px;text-align:right">Utang (₱)</th>
+    </tr>`;
+  
+  let totalCases=0, totalAmount=0, totalPaid=0, totalUtang=0;
+  const trucks = [...new Set(sales.map(s=>s.truck))].sort();
+  
+  trucks.forEach(truck=>{
+    const truckSales = sales.filter(s=>s.truck===truck && new Date(s.time)>=startDate && new Date(s.time)<=endDate);
+    const cases = truckSales.reduce((a,s)=>a+s.qty,0);
+    const amount = truckSales.reduce((a,s)=>a+s.amount,0);
+    const paid = truckSales.reduce((a,s)=>a+s.paid,0);
+    const utang = amount - paid;
+    
+    html += `<tr style="border:1px solid #ccc;background:${trucks.indexOf(truck)%2===0?'#f9f9f9':'white'}">
+      <td style="border:1px solid #ccc;padding:8px">${truck}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:center">${cases}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:right">₱${amount.toFixed(2)}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:right">₱${paid.toFixed(2)}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:right">₱${utang.toFixed(2)}</td>
+    </tr>`;
+    totalCases+=cases; totalAmount+=amount; totalPaid+=paid; totalUtang+=utang;
+  });
+  
+  html += `<tr style="background:#F4A261;font-weight:bold">
+    <td style="border:2px solid #999;padding:8px">TOTAL</td>
+    <td style="border:2px solid #999;padding:8px;text-align:center">${totalCases}</td>
+    <td style="border:2px solid #999;padding:8px;text-align:right">₱${totalAmount.toFixed(2)}</td>
+    <td style="border:2px solid #999;padding:8px;text-align:right">₱${totalPaid.toFixed(2)}</td>
+    <td style="border:2px solid #999;padding:8px;text-align:right">₱${totalUtang.toFixed(2)}</td>
+  </tr></table>`;
+  
+  document.getElementById('monthlySummaryContent').innerHTML=html;
+}
+
+function getStartOfWeek(year, week){
+  const simple = new Date(year, 0, 1 + (week-1)*7);
+  const dow = simple.getDay();
+  const ISOweekStart = simple;
+  if(dow<=4) ISOweekStart.setDate(simple.getDate()-simple.getDay()+1);
+  else ISOweekStart.setDate(simple.getDate()+8-simple.getDay());
+  return ISOweekStart;
+}
+
+document.getElementById('pinInput').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+boot();
+</script>
+</body>
+</html>
